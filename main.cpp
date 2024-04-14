@@ -1,35 +1,31 @@
-#include <stdio.h>
 #include <iostream>
 #include <vector>
-#include <math.h>
+#include <cmath>
 
 using namespace std;
 
-struct state
-{
+struct state {
     vector<vector<int>> grade = {{0,0,0},{0,0,0},{0,0,0}};
     vector<state*> filhos;
 
-    state(){
-
-    }
-    state(int lin, int col){
-        this->ult_coluna = col;
-        this->ult_linha = lin;
-    }
     void show_grid(){
-    for(int i = 0; i < 3; i++){
-        for(int j = 0; j < 3; j++){
-            cout << grade[i][j]  << "|";
-        }
-        cout << endl;
+        for(int i = 0; i < 3; i++){
+            for(int j = 0; j < 3; j++){
+                if(grade[i][j] == 1) cout << "o";
+                else if(grade[i][j] == 2) cout << "x";
+                else cout << i*3 + j + 1;
+            
+                if(j != 2) cout << "|";
+            }
+            cout << endl;
         }
     }
+
     void getfilhos(bool is_max){
         for(int i = 0; i < 3; i++){
             for(int j = 0; j < 3; j++){
                 if (grade[i][j] == 0){
-                    state * novo_state = new state(i,j);
+                    state * novo_state = new state();
                     novo_state->grade = grade;
                     if(is_max) novo_state->grade[i][j] = 2;
                     else novo_state->grade[i][j] = 1;
@@ -48,72 +44,117 @@ void entrada_j1(state* jogo){
     int coluna = idx%3;
     int linha = (int) floorf(idx/(float)3);
 
-    jogo->grade[linha][coluna] = 1;
-}
-
-bool check_horizontal(state *no){
-    vector<vector<int>> grade = no->grade;
-    if (grade[0][0] == grade[0][1] && grade[0][0] == grade[0][2] && grade[0][0] != 0) return true;
-    if (grade[1][0] == grade[1][1] && grade[1][0] == grade[1][2] && grade[1][0] != 0) return true;
-    if (grade[2][0] == grade[2][1] && grade[2][0] == grade[2][2] && grade[2][0] != 0) return true;
-return false;
-}
-
-bool check_vertical(state *no){
-    vector<vector<int>> grade = no->grade;
-    if (grade[0][0] == grade[1][0] && grade[0][0] == grade[2][0] && grade[0][0] != 0) return true;
-    if (grade[0][1] == grade[1][1] && grade[0][1] == grade[2][1] && grade[0][1] != 0) return true;
-    if (grade[0][2] == grade[1][2] && grade[0][2] == grade[2][2] && grade[0][2] != 0) return true;
-return false;
-}
-
-bool check_diagonal(state *no){
-    vector<vector<int>> grade = no->grade;
-    if (grade[0][0] == grade[1][1] && grade[0][0] == grade[2][2] && grade[0][0] != 0) return true;
-    if (grade[0][2] == grade[1][1] && grade[0][2] == grade[2][0] && grade[0][2] != 0) return true;
-return false;
-}
-
-bool vitoria(state *no){
-    if (check_horizontal(no)) return true;
-    else if (check_vertical(no)) return true;
-    else if (check_diagonal(no)) return true;
-    else return false;
-}
-
-int minimax(state *no, int depth, bool is_max){
-    if(no != nullptr) no->getfilhos(is_max);
-    if(no->filhos.size() == 0 || depth == 0){
-        if (vitoria(no)) return 1;
-        else return 0;
+    if(jogo->grade[linha][coluna] != 0){
+        cout << "Posicao ocupada. ";
+        entrada_j1(jogo);
+    }else{
+        jogo->grade[linha][coluna] = 1;
     }
-    else if(!is_max){
-        int a = 1000;
-        for(int i = 0; i < no->filhos.size(); i++){
-            a = min(a,minimax(no->filhos[i],depth -1, true));
+}
+
+bool check_vitoria(state *no){
+    vector<vector<int>> grade = no->grade;
+
+    for (int i = 0; i < 3; ++i) {
+        if (grade[i][0] == grade[i][1] && grade[i][0] == grade[i][2] && grade[i][0] != 0)
+            return true;
+        if (grade[0][i] == grade[1][i] && grade[0][i] == grade[2][i] && grade[0][i] != 0)
+            return true;
+    }
+
+    if (grade[0][0] == grade[1][1] && grade[0][0] == grade[2][2] && grade[0][0] != 0)
+        return true;
+    if (grade[0][2] == grade[1][1] && grade[0][2] == grade[2][0] && grade[0][2] != 0)
+        return true;
+
+    return false;
+}
+
+bool tabuleiro_cheio(state *no) {
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            if (no->grade[i][j] == 0)
+                return false;
         }
-        return a;
     }
-    else{
-        int a = -1000;
-        for(int i = 0; i < no->filhos.size(); i++){
-            a = max(a,minimax(no->filhos[i],depth -1, false));
+    return true;
+}
+
+int minimax(state *no, int depth, bool is_max) {
+    if (check_vitoria(no))
+        return is_max ? -1 : 1;
+    if (tabuleiro_cheio(no))
+        return 0;
+    if (depth == 0)
+        return 0;
+    
+    no->getfilhos(is_max);
+    if (is_max) {
+        int best_score = -1000;
+        for (state* filho : no->filhos) {
+            int score = minimax(filho, depth - 1, false);
+            best_score = max(best_score, score);
         }
-        return a;
+        return best_score;
+    } else {
+        int best_score = 1000;
+        for (state* filho : no->filhos) {
+            int score = minimax(filho, depth - 1, true);
+            best_score = min(best_score, score);
+        }
+        return best_score;
     }
 }
 
-
-int main(int argc, char const *argv[])
-{
+int main() {
     state *jogo = new state();
     jogo->show_grid();
-    entrada_j1(jogo);    
-    jogo->show_grid();
-    minimax(jogo,10,true);
-    cout << endl;
-    jogo->show_grid();
 
+    while (true) {
+        entrada_j1(jogo);
+        jogo->show_grid();
+
+        if (check_vitoria(jogo)) {
+            cout << "Jogador humano ganhou!" << endl;
+            break;
+        }
+
+        if (tabuleiro_cheio(jogo)) {
+            cout << "O jogo acabou empatado!" << endl;
+            break;
+        }
+
+        jogo->getfilhos(true);
+        int best_score = -1000;
+        state* melhor_jogada = nullptr;
+        for (state* filho : jogo->filhos) {
+            int score = minimax(filho, 2, false);
+            if (score > best_score) {
+                best_score = score;
+                melhor_jogada = filho;
+            }
+        }
+
+        if (melhor_jogada) {
+            cout << "Proxima jogada do computador: " << endl;
+            melhor_jogada->show_grid();
+            jogo = melhor_jogada;
+            jogo->filhos = {};
+        } else {
+            cout << "Erro: Nenhuma jogada disponivel para o computador!" << endl;
+            break;
+        }
+
+        if (check_vitoria(jogo)) {
+            cout << "Computador ganhou!" << endl;
+            break;
+        }
+
+        if (tabuleiro_cheio(jogo)) {
+            cout << "O jogo acabou empatado!" << endl;
+            break;
+        }
+    }
 
     return 0;
 }
